@@ -1,0 +1,23 @@
+# Quantum-Enhanced GPT Requirements
+
+# Core dependencies
+torch>=1.11.0
+numpy>=1.21.0
+
+# Quantum computing
+qiskit>=1.0.0
+qiskit-machine-learning>=0.7.0
+
+# Scientific computing
+scipy>=1.7.0
+matplotlib>=3.5.0
+
+# Optional: Enhanced visualization
+qiskit[visualization]
+
+# Development and testing
+jupyter>=1.0.0
+pytest>=6.0.0
+
+# Optional: IBM Quantum access
+qiskit-ibm-runtime>=0.8.0
