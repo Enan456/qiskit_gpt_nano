@@ -47,7 +47,7 @@ def main():
     print(f"Validation data: {len(val_data)} tokens")
 
     # Training hyperparameters
-    max_iters = 1000  # Reduced for demo
+    max_iters = 10000  # Reduced for demo
     eval_interval = 100
     eval_iters = 50   # Reduced for quantum simulation
     device = "cpu"

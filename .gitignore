@@ -4,3 +4,5 @@ __pycache__
 .vscode
 .env
 src/__pycache__
+models/profile_classical.txt
+models/profile_quantum.txt

@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import numpy as np
+import os
 
 # Qiskit imports
 from qiskit import QuantumCircuit, transpile
@@ -12,16 +13,17 @@ from qiskit.primitives import StatevectorEstimator as Estimator, StatevectorSamp
 from qiskit_machine_learning.neural_networks import EstimatorQNN, SamplerQNN
 from qiskit_machine_learning.connectors import TorchConnector
 from qiskit.quantum_info import SparsePauliOp
+from pathlib import Path
 
 # GPT hyperparameters (simplified for quantum integration)
-batch_size = 4  # Reduced for quantum simulation
-block_size = 8  # Reduced for quantum efficiency
-n_embd = 16     # Reduced embedding dimension
-n_head = 2      # Reduced number of heads
-n_layer = 2     # Reduced number of layers
-n_qubits = 4    # Number of qubits for quantum attention
+batch_size = 12
+block_size = 16
+n_embd = 32
+n_head = 4
+n_layer = 3
+n_qubits = 5
 dropout = 0.1
-learning_rate = 1e-3
+learning_rate = 2e-3
 
 class QuantumAttentionHead(nn.Module):
     """ Quantum-enhanced attention head using Qiskit """
@@ -49,6 +51,33 @@ class QuantumAttentionHead(nn.Module):
         # Scaling factor for quantum attention
         self.quantum_scale = nn.Parameter(torch.tensor(0.1))
 
+    def draw_circuit(self, filename: str = None, output: str = "mpl"):
+        """Draw and optionally save the quantum attention circuit.
+        - output: 'mpl' for matplotlib figure, 'text' for ASCII
+        - filename: path to save (e.g., models/quantum_attention_circuit.png). If None, returns the figure/text.
+        """
+        try:
+            from qiskit.visualization import circuit_drawer
+        except Exception as e:
+            raise RuntimeError(f"Qiskit visualization not available: {e}")
+
+        if output == "text":
+            diagram = self.quantum_attention_circuit.draw(output="text")
+            if filename:
+                Path(filename).write_text(str(diagram), encoding="utf-8")
+                return filename
+            return str(diagram)
+        else:
+            # mpl or default
+            if filename is None:
+                # Return a figure object
+                fig = self.quantum_attention_circuit.draw(output="mpl")
+                return fig
+            else:
+                # Save directly to file
+                circuit_drawer(self.quantum_attention_circuit, output="mpl", filename=filename)
+                return filename
+
     def _build_quantum_attention_circuit(self):
         """Build parameterized quantum circuit for attention computation"""
         # Feature map for encoding classical data
@@ -69,8 +98,27 @@ class QuantumAttentionHead(nn.Module):
         # Observable for measuring quantum attention weights
         observable = SparsePauliOp.from_list([("Z" * self.n_qubits, 1.0)])
 
-        # Create EstimatorQNN
-        estimator = Estimator()
+        # Create EstimatorQNN with Aer if available
+        try:
+            from qiskit_aer.primitives import Estimator as AerEstimator  # type: ignore
+            estimator_impl = AerEstimator
+        except Exception:
+            estimator_impl = Estimator
+
+        estimator = estimator_impl()
+        # Configure Aer threading if available
+        try:
+            max_threads_env = os.getenv("AER_THREADS") or os.getenv("NUM_THREADS")
+            max_threads = int(max_threads_env) if max_threads_env else (os.cpu_count() or 8)
+            if hasattr(estimator, "set_options"):
+                estimator.set_options(
+                    max_parallel_threads=max_threads,
+                    max_parallel_experiments=max_threads,
+                    max_parallel_shots=1,
+                )
+        except Exception:
+            pass
+
         qnn = EstimatorQNN(
             circuit=self.quantum_attention_circuit,
             observables=observable,
